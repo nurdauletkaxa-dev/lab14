@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Приложение для тестирования и отладки</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/jest-lite@1.0.0-alpha.4/dist/jest-lite.umd.js"></script>
+
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        h1, h2 { color: #333; border-bottom: 2px solid #ccc; padding-bottom: 5px; }
+        #results { margin-top: 20px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #ddd; }
+        .test-result-group { margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 4px; }
+        .test-result.passed { color: green; }
+        .test-result.failed { color: red; font-weight: bold; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🚀 Приложение с тестами и отладкой</h1>
+
+    <div id="results-container">
+        <h2>Модульные тесты Jest</h2>
+        <div id="results"></div>
+    </div>
+
+    <hr>
+
+    <div id="demo-container">
+        <h2>Демонстрация функций (с отладочной задачей)</h2>
+        <p>Нажмите кнопку, чтобы проверить функции, включая <code>findMaxBroken</code>, которая содержит ошибку.</p>
+        <button onclick="runDemo()">Запустить демонстрацию</button>
+        <pre id="output"></pre>
+    </div>
+
+
+    <script>
+        // ===================================================
+        // 1. Функции (Ваш код из script.js)
+        // ===================================================
+
+        function factorial(n) {
+            if (n < 0) return null;
+            let result = 1;
+
+            for (let i = 1; i <= n; i++) {
+                result *= i;
+            }
+
+            return result;
+        }
+
+        function findMax(arr) {
+            // Простая и корректная реализация
+            return Math.max(...arr);
+        }
+
+        // --- Задание DevTools: Функция с ошибкой (заранее "сломанная") ---
+        function findMaxBroken(arr) {
+            // !!! ОШИБКА ЗДЕСЬ !!!
+            // Инициализация max = 0 работает неверно для массивов,
+            // содержащих только отрицательные числа (например, [-5, -2, -9])
+            let max = 0; // <-- ИСХОДНАЯ ОШИБКА
+            
+            for (let i = 0; i < arr.length; i++) {
+                if (arr[i] > max) {
+                    max = arr[i];
+                }
+            }
+            return max;
+        }
+
+        // --- Исправленный вариант findMaxBroken ---
+        function findMaxFixed(arr) {
+            // Правильная инициализация: берем первый элемент массива
+            let max = arr[0];
+            for (let i = 1; i < arr.length; i++) {
+                if (arr[i] > max) {
+                    max = arr[i];
+                }
+            }
+            return max;
+        }
+
+        function detectError(arr) {
+            const broken = findMaxBroken(arr);
+            const correct = findMaxFixed(arr);
+
+            if (broken !== correct) {
+                return "⚠ Обнаружена ошибка в findMaxBroken():\n" +
+                        "Функция вернула " + broken + ", но правильное значение — " + correct;
+            }
+
+            return "Ошибок не обнаружено.";
+        }
+
+
+        function runDemo() {
+            const out = document.getElementById("output");
+            const fact = factorial(5);
+            const testArray = [-5, -2, -9]; // Тестовый массив, на котором проявляется ошибка
+
+            const maxCorrect = findMax(testArray);
+            const maxBroken = findMaxBroken(testArray);
+            const maxFixed = findMaxFixed(testArray);
+            const errorCheck = detectError(testArray);
+
+            out.textContent =
+                "factorial(5) = " + fact + "\n" +
+                "Массив: [" + testArray.join(", ") + "]\n\n" +
+                "findMax (Корректная) = " + maxCorrect + "\n" +
+                "findMaxBroken (С ошибкой) = " + maxBroken + "\n" +
+                "findMaxFixed (Исправленная) = " + maxFixed + "\n\n" +
+                "--- Проверка findMaxBroken на ошибку ---\n" +
+                errorCheck;
+        }
+
+
+        // ===================================================
+        // 2. Модульные тесты Jest-Lite (для проверки функций)
+        // ===================================================
+        
+        // Получаем функции Jest-Lite
+        const { describe, test, expect, run } = jestLite;
+
+        describe("Проверка factorial()", () => {
+            test("factorial(5) должно быть 120", () => {
+                expect(factorial(5)).toBe(120);
+            });
+
+            test("factorial(0) должно быть 1", () => {
+                expect(factorial(0)).toBe(1);
+            });
+        });
+
+        // Этот тест должен ПРОВАЛИТЬСЯ из-за findMaxBroken
+        describe("Проверка findMaxBroken()", () => {
+            test("Корректно работает с отрицательными числами (ОЖИДАЕМ ПРОВАЛ)", () => {
+                // Ожидаемый результат: -2, но findMaxBroken вернет 0 (ошибка!)
+                expect(findMaxBroken([-5, -2, -9])).toBe(-2); // <-- Этот тест ПРОВАЛИТСЯ
+            });
+        });
+        
+        // Этот тест должен ПРОЙТИ (используем исправленную функцию)
+        describe("Проверка findMaxFixed()", () => {
+            test("Корректно работает с отрицательными числами", () => {
+                expect(findMaxFixed([-5, -2, -9])).toBe(-2); // <-- Этот тест ПРОЙДЕТ
+            });
+        });
+
+        // Запуск тестов, когда DOM готов
+        window.onload = function() {
+            run({ domElement: document.getElementById("results") });
+        };
+    </script>
+
+</body>
+</html>
